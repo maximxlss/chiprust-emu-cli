@@ -1,7 +1,7 @@
 [package]
 name = "chiprust-emu-cli"
 description = "CLI for chiprust-emu"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Maxim Kuznetsov <maximxlssoff@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -9,7 +9,7 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chiprust-emu = "0.1.0"
+chiprust-emu = {version = "0.2.0", path = "../chiprust-emu"}
 rodio = "0.13.1"
 crossterm = "0.19.0"
 clap = "2.33.3"
