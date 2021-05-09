@@ -1,3 +1,5 @@
+use std::hint::unreachable_unchecked;
+
 use crossterm::{
     cursor::MoveTo,
     queue,
@@ -59,6 +61,28 @@ pub fn get_screen(chip: &mut super::Chip8) -> Vec<String> {
             }
         }
         result.push(row);
+    }
+    result
+}
+
+pub fn get_visual_double_byte(b: u16) -> String {
+    let mut result = String::new();
+    for i in 0..8 {
+        let upper = (b >> (7-i)) & 1;
+        let lower = (b >> (15-i)) & 1;
+        match upper{
+            1 => match lower {
+                1 => result.push('█'),
+                0 => result.push('▀'),
+                _ => unsafe {unreachable_unchecked()}
+            },
+            1 => match lower {
+                1 => result.push('▄'),
+                0 => result.push(' '),
+                _ => unsafe {unreachable_unchecked()}
+            },
+            _ => unsafe {unreachable_unchecked()}
+        }
     }
     result
 }
