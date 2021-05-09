@@ -211,18 +211,20 @@ pub fn draw_memory(term_size: (u16, u16), stdout: &mut std::io::Stdout, chip: &m
             queue!(
                 stdout,
                 Print(MEMORY_CURRENT_STYLE.apply(format!(
-                    " ${:04x?}: {:04x?} ",
+                    " ${:04x?}: {:04x?}; {}",
                     starting_with + i,
-                    chip.get_memory(starting_with + i)
+                    chip.get_opcode(starting_with + i),
+                    get_visual_double_byte(chip.get_opcode(starting_with + i))
                 )))
             )
         } else {
             queue!(
                 stdout,
                 Print(MEMORY_DEBUG_STYLE.apply(format!(
-                    " {:04x?}: {:04x?} ",
+                    " {:04x?}: {:04x?};  {}",
                     starting_with + i,
-                    chip.get_memory(starting_with + i)
+                    chip.get_opcode(starting_with + i),
+                    get_visual_double_byte(chip.get_opcode(starting_with + i))
                 )))
             )
         }
