@@ -264,3 +264,12 @@ pub fn draw_regs(term_size: (u16, u16), stdout: &mut std::io::Stdout, chip: &mut
     )
     .expect("Error working with terminal");
 }
+
+pub fn draw_label(stdout: &mut std::io::Stdout, label: &str) {
+    queue!(
+        stdout,
+        MoveTo(2, 0),
+        Print(BORDER_STYLE.apply(label))
+    )
+    .expect("Error working with terminal");
+}

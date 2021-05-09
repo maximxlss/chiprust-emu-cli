@@ -65,7 +65,7 @@ impl TermUI {
         }
     }
 
-    pub fn draw(&mut self, chip: &mut Chip8) {
+    pub fn draw(&mut self, chip: &mut Chip8, label: &str) {
         let mut stdout = stdout();
         if self.term_size != terminal_size().unwrap() {
             queue!(stdout, Clear(ClearType::All)).expect("Error working with terminal");
@@ -86,6 +86,7 @@ impl TermUI {
         if chip.display.dirty() {
             drawing::draw_screen(&mut stdout, chip)
         }
+        drawing::draw_label(&mut stdout, label);
         drawing::draw_memory(self.term_size, &mut stdout, chip);
         drawing::draw_regs(self.term_size, &mut stdout, chip);
         stdout.flush().expect("Error flusing the stdout");
