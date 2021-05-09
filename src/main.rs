@@ -14,7 +14,7 @@ fn run() {
         }
     };
 
-    let mut chip = Chip8::new(&|| 0, &|_| false);
+    let mut chip = Chip8::new(&cpu_thread::key_wait_handler, &cpu_thread::key_state_handler);
 
     chip.load(0x200, &config.program, None);
 
