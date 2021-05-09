@@ -214,20 +214,27 @@ pub fn draw_regs(term_size: (u16, u16), stdout: &mut std::io::Stdout, chip: &mut
     let mut p = 0;
     p += spacing;
     queue!(stdout, MoveTo(1, 34 + p)).expect("Error working with terminal");
-    for (i, reg) in regs.iter().enumerate().take(8) {
+    for (i, reg) in regs.iter().enumerate().take(9) {
         queue!(
             stdout,
-            Print(REGISTER_DEBUG_STYLE.apply(format!("   V{:x?}= {:02x?}", i, reg)))
+            Print(REGISTER_DEBUG_STYLE.apply(format!("  V{:x?}= {:02x?}", i, reg)))
         )
         .expect("Error working with terminal");
     }
     p += middle_space;
     queue!(stdout, MoveTo(1, 34 + p)).expect("Error working with terminal");
-    for (i, reg) in regs.iter().enumerate().skip(8) {
+    for (i, reg) in regs.iter().enumerate().skip(9) {
         queue!(
             stdout,
-            Print(REGISTER_DEBUG_STYLE.apply(format!("   V{:x?}= {:02x?}", i, reg)))
+            Print(REGISTER_DEBUG_STYLE.apply(format!("  V{:x?}= {:02x?}", i, reg)))
         )
         .expect("Error working with terminal");
     }
+    queue!(
+        stdout,
+        Print(REGISTER_DEBUG_STYLE.apply(format!("  DT= {:02x?}", chip.get_delay_timer()))),
+        Print(REGISTER_DEBUG_STYLE.apply(format!("  ST= {:02x?}", chip.get_sound_timer()))),
+        Print(REGISTER_DEBUG_STYLE.apply(format!("  I= {:04x?}", chip.get_i())))
+    )
+    .expect("Error working with terminal");
 }
