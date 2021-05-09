@@ -44,7 +44,7 @@ fn run() {
                     return;
                 }
             }
-            termui.draw(&mut chip, format!("{:} ms/c or {} cps", cpu_elapsed.as_millis(), 1_000_000_000/cpu_elapsed.as_nanos()).as_str());
+            termui.draw(&mut chip, format!("{: >5} ms/c or {: >6} cps", cpu_elapsed.as_millis(), 1_000_000_000/cpu_elapsed.as_nanos()).as_str());
             last_cpu_tick = Instant::now()
         }
         if last_timers_tick.elapsed() > timers_tick {
