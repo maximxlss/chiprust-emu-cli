@@ -22,6 +22,13 @@ fn get_matches() -> ArgMatches<'static> {
                                    .help("Sets a custom cpu frequency. If zero, instructions would be executed ASAP.")
                                    .default_value("60")
                                    .takes_value(true))
+                              .arg(Arg::with_name("draw_freq")
+                                   .short("d")
+                                   .long("draw")
+                                   .value_name("frequency")
+                                   .help("Sets a custom draw frequency. Recommended to keep equal to the monitor refresh rate.")
+                                   .default_value("60")
+                                   .takes_value(true))
                               .arg(Arg::with_name("speed")
                                    .short("s")
                                    .long("speed")
@@ -42,6 +49,7 @@ fn get_matches() -> ArgMatches<'static> {
 }
 
 pub struct Config {
+    pub draw_freq: u32,
     pub cpu_freq: u32,
     pub timers_freq: u32,
     pub sink: Sink,
@@ -63,6 +71,13 @@ impl Config {
                     sound_freq
                 ))
             }
+        };
+
+        let draw_freq = matches.value_of("draw_freq").unwrap();
+
+        let draw_freq = match draw_freq.parse::<u32>() {
+            Ok(v) => v,
+            Err(_) => return Err(format!("Can't parse {} to an unsigned integer.", draw_freq)),
         };
 
         let cpu_freq = matches.value_of("cpu_freq").unwrap();
@@ -111,6 +126,7 @@ impl Config {
         sink.append(source);
 
         Ok(Config {
+            draw_freq,
             cpu_freq,
             timers_freq,
             sink,
