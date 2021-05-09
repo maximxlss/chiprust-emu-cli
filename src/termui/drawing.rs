@@ -76,7 +76,7 @@ pub fn get_visual_double_byte(b: u16) -> String {
                 0 => result.push('▀'),
                 _ => unsafe {unreachable_unchecked()}
             },
-            1 => match lower {
+            0 => match lower {
                 1 => result.push('▄'),
                 0 => result.push(' '),
                 _ => unsafe {unreachable_unchecked()}
