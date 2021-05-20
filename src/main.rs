@@ -55,6 +55,7 @@ fn timers_thread(chip: Arc<Mutex<Chip8>>, timers_freq: u32, sink: Sink) {
 }
 
 fn run() {
+    // load args configuration
     let config = match Config::load_args() {
         Ok(v) => v,
         Err(e) => {
@@ -63,6 +64,7 @@ fn run() {
         }
     };
 
+    // create an emulator instance and load rom from the config
     let mut chip = Chip8::new
         ::<&'static (dyn Fn() -> u8 + Send + Sync + 'static),
         &'static (dyn Fn(u8) -> bool + Send + Sync + 'static)>
@@ -70,19 +72,23 @@ fn run() {
 
     chip.load(0x200, &config.program, None);
 
+    // wrap the instance into an arc mutex
     let chip = Arc::new(Mutex::new(chip));
 
+    // clone the intance and needed constant values and start the cpu thread
     let chip_clone = chip.clone();
     let cpu_freq = config.cpu_freq;
     thread::spawn(move || cpu_thread(chip_clone, cpu_freq));
+    // clone the intance and needed constant values and start the timers thread
     let chip_clone = chip.clone();
     let timers_freq = config.timers_freq;
     let sink = config.sink;
     thread::spawn(move || timers_thread(chip_clone, timers_freq, sink));
-    let chip_clone = chip;
+    // clone the needed constant values and start the draw thread
     let draw_freq = config.draw_freq;
-    let handle = thread::spawn(move || draw_thread::draw_thread(chip_clone, draw_freq));
+    let handle = thread::spawn(move || draw_thread::draw_thread(chip, draw_freq));
 
+    // keep running until the draw thread exits
     handle.join().unwrap();
 }
 

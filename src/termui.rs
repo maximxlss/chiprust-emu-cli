@@ -25,6 +25,7 @@ pub struct TermUI {
 
 impl TermUI {
     pub fn new() -> TermUI {
+        // set up the terminal
         execute!(
             stdout(),
             EnterAlternateScreen,
@@ -34,11 +35,14 @@ impl TermUI {
         )
         .expect("Error working with terminal");
 
+        // add a ctrl-c handler to reset the terminal on ctrl-c
         set_ctrlc_handler(|| {
             exit("")
         })
         .expect("Error setting up ctrl-c handler");
 
+        // add a panic hook to reset the terminal on panic
+        // not sure if it should even exist
         std::panic::set_hook(Box::new(|panic_info| {
             match execute!(stdout(), LeaveAlternateScreen) {
                 Ok(_) => {}
