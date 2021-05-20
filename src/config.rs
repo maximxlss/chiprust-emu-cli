@@ -1,4 +1,5 @@
 use clap::{App, Arg, ArgMatches};
+#[cfg(feature = "sound")]
 use rodio::{source::SineWave, OutputStream, Sink};
 use std::io;
 use std::{fs::File, io::Read};
@@ -52,7 +53,8 @@ pub struct Config {
     pub draw_freq: u32,
     pub cpu_freq: u32,
     pub timers_freq: u32,
-    pub sink: Sink,
+    #[cfg(feature = "sound")]
+    pub sink: Option<Sink>,
     pub is_debug: bool,
     pub program: Vec<u8>,
 }
@@ -61,8 +63,10 @@ impl Config {
     pub fn load_args() -> Result<Config, String> {
         let matches = get_matches();
 
+        #[cfg(feature = "sound")]
         let sound_freq = matches.value_of("tone").unwrap();
 
+        #[cfg(feature = "sound")]
         let sound_freq = match sound_freq.parse::<u32>() {
             Ok(v) => v,
             Err(_) => {
@@ -119,16 +123,21 @@ impl Config {
             Err(e) => return Err(format!("{}", e)),
         }
 
-        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-        let sink = Sink::try_new(&stream_handle).unwrap();
-        sink.pause();
-        let source = SineWave::new(sound_freq);
-        sink.append(source);
+        #[cfg(feature = "sound")]
+        let sink = {
+            let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+            let sink = Sink::try_new(&stream_handle).unwrap();
+            sink.pause();
+            let source = SineWave::new(sound_freq);
+            sink.append(source);
+            Some(sink)
+        };
 
         Ok(Config {
             draw_freq,
             cpu_freq,
             timers_freq,
+            #[cfg(feature = "sound")]
             sink,
             is_debug,
             program: buf,

@@ -1,10 +1,12 @@
 mod config;
 mod termui;
+#[cfg(feature = "input")]
 mod input;
 mod draw_thread;
 
 use chiprust_emu::Chip8;
 use config::Config;
+#[cfg(feature = "sound")]
 use rodio::Sink;
 use std::{thread, sync::{Arc, Mutex}};
 use spin_sleep::LoopHelper;
@@ -13,6 +15,7 @@ static mut CYCLE_RATE: f64 = 0.;
 static mut DRAW_RATE: f64 = 0.;
 
 pub fn cpu_thread(chip: Arc<Mutex<Chip8>>, cpu_freq: u32) {
+    #[cfg(feature = "input")]
     {
         let mut chip = chip.lock().unwrap();
         chip.set_handlers(&input::key_wait_handler, &input::key_state_handler);
@@ -35,15 +38,20 @@ pub fn cpu_thread(chip: Arc<Mutex<Chip8>>, cpu_freq: u32) {
     }
 }
 
-fn timers_thread(chip: Arc<Mutex<Chip8>>, timers_freq: u32, sink: Sink) {
+fn timers_thread(chip: Arc<Mutex<Chip8>>, timers_freq: u32, #[cfg(feature = "sound")] sink: Option<Sink>) {
     let mut loop_helper = LoopHelper::builder()
         .report_interval_s(0.5) 
         .build_with_target_rate(timers_freq);
+
+    #[cfg(feature = "sound")]
+    let sink = sink.unwrap();
+
     loop {
         loop_helper.loop_start();
         {
             let mut chip = chip.lock().unwrap();
             chip.timers_tick();
+            #[cfg(feature = "sound")]
             if chip.is_sound_playing() {
                 sink.play()
             } else {
@@ -82,8 +90,9 @@ fn run() {
     // clone the intance and needed constant values and start the timers thread
     let chip_clone = chip.clone();
     let timers_freq = config.timers_freq;
+    #[cfg(feature = "sound")]
     let sink = config.sink;
-    thread::spawn(move || timers_thread(chip_clone, timers_freq, sink));
+    thread::spawn(move || timers_thread(chip_clone, timers_freq, #[cfg(feature = "sound")] sink));
     // clone the needed constant values and start the draw thread
     let draw_freq = config.draw_freq;
     let handle = thread::spawn(move || draw_thread::draw_thread(chip, draw_freq));
