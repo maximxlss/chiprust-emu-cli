@@ -4,8 +4,8 @@ use chiprust_emu::Chip8State;
 use crossterm::{
     cursor::{Hide, MoveTo},
     execute, queue,
-    style::{Colorize, Print, SetBackgroundColor, SetForegroundColor},
-    terminal::{size as terminal_size, EnterAlternateScreen, LeaveAlternateScreen, Clear, ClearType},
+    style::{Colorize, Print, SetBackgroundColor, SetForegroundColor, ResetColor},
+    terminal::{size as terminal_size, EnterAlternateScreen, LeaveAlternateScreen, Clear, ClearType}
 };
 use ctrlc::set_handler as set_ctrlc_handler;
 use std::io::{stdout, Write};
@@ -13,7 +13,7 @@ use std::io::{stdout, Write};
 const MINIMUM_SIZE: (u16, u16) = (143, 36);
 
 pub fn exit(error_message: &str) {
-    execute!(stdout(), LeaveAlternateScreen).expect("Error working with terminal");
+    execute!(stdout(), LeaveAlternateScreen, ResetColor).expect("Error working with terminal");
     println!("{}", error_message);
     std::process::exit(0)
 }
