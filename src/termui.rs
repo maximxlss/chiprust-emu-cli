@@ -1,6 +1,6 @@
 mod drawing;
 
-use chiprust_emu::Chip8;
+use chiprust_emu::Chip8State;
 use crossterm::{
     cursor::{Hide, MoveTo},
     execute, queue,
@@ -65,7 +65,7 @@ impl TermUI {
         }
     }
 
-    pub fn draw(&mut self, chip: &mut Chip8, label: &str) {
+    pub fn draw(&mut self, label: &str, chip: Chip8State, display: Option<[u128; 64]>) {
         let mut stdout = stdout();
         if self.term_size != terminal_size().unwrap() {
             queue!(stdout, Clear(ClearType::All)).expect("Error working with terminal");
@@ -83,12 +83,12 @@ impl TermUI {
             }
             drawing::draw_frame(self.term_size, &mut stdout)
         }
-        if chip.display.dirty() {
-            drawing::draw_screen(&mut stdout, chip)
+        if let Some(d) = display {
+            drawing::draw_screen(&mut stdout, &d)
         }
         drawing::draw_label(&mut stdout, label);
-        drawing::draw_memory(self.term_size, &mut stdout, chip);
-        drawing::draw_regs(self.term_size, &mut stdout, chip);
+        drawing::draw_memory(self.term_size, &mut stdout, &chip);
+        drawing::draw_regs(self.term_size, &mut stdout, &chip);
         stdout.flush().expect("Error flusing the stdout");
     }
 }

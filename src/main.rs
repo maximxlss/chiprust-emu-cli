@@ -1,9 +1,58 @@
 mod config;
 mod termui;
+mod input;
+mod draw_thread;
 
 use chiprust_emu::Chip8;
 use config::Config;
-use std::time::{Duration, Instant};
+use rodio::Sink;
+use std::{thread, sync::{Arc, Mutex}};
+use spin_sleep::LoopHelper;
+
+static mut CYCLE_RATE: f64 = 0.;
+static mut DRAW_RATE: f64 = 0.;
+
+pub fn cpu_thread(chip: Arc<Mutex<Chip8>>, cpu_freq: u32) {
+    {
+        let mut chip = chip.lock().unwrap();
+        chip.set_handlers(&input::key_wait_handler, &input::key_state_handler);
+    }
+
+    let mut loop_helper = LoopHelper::builder()
+        .report_interval_s(0.5) 
+        .build_with_target_rate(cpu_freq);
+
+    loop {
+        loop_helper.loop_start();
+        {
+            let mut chip = chip.lock().unwrap();
+            chip.cpu_tick().unwrap();
+        };
+        if let Some(fps) = loop_helper.report_rate() {
+            unsafe {CYCLE_RATE = fps}
+        }
+        loop_helper.loop_sleep()
+    }
+}
+
+fn timers_thread(chip: Arc<Mutex<Chip8>>, timers_freq: u32, sink: Sink) {
+    let mut loop_helper = LoopHelper::builder()
+        .report_interval_s(0.5) 
+        .build_with_target_rate(timers_freq);
+    loop {
+        loop_helper.loop_start();
+        {
+            let mut chip = chip.lock().unwrap();
+            chip.timers_tick();
+            if chip.is_sound_playing() {
+                sink.play()
+            } else {
+                sink.pause()
+            }
+        }
+        loop_helper.loop_sleep()
+    }
+}
 
 fn run() {
     let config = match Config::load_args() {
@@ -14,49 +63,27 @@ fn run() {
         }
     };
 
-    let mut chip = Chip8::new(&cpu_thread::key_wait_handler, &cpu_thread::key_state_handler);
+    let mut chip = Chip8::new
+        ::<&'static (dyn Fn() -> u8 + Send + Sync + 'static),
+        &'static (dyn Fn(u8) -> bool + Send + Sync + 'static)>
+        (&|| 0, &|_| false);
 
     chip.load(0x200, &config.program, None);
 
-    let cpu_tick = if config.cpu_freq != 0 {
-        Duration::from_micros(1_000_000 / config.cpu_freq as u64)
-    } else {
-        Duration::from_micros(0)
-    };
-    let timers_tick = if config.cpu_freq != 0 {
-        Duration::from_micros(1_000_000 / config.cpu_freq as u64)
-    } else {
-        Duration::from_micros(0)
-    };
+    let chip = Arc::new(Mutex::new(chip));
 
-    let mut termui = termui::TermUI::new();
+    let chip_clone = chip.clone();
+    let cpu_freq = config.cpu_freq;
+    thread::spawn(move || cpu_thread(chip_clone, cpu_freq));
+    let chip_clone = chip.clone();
+    let timers_freq = config.timers_freq;
+    let sink = config.sink;
+    thread::spawn(move || timers_thread(chip_clone, timers_freq, sink));
+    let chip_clone = chip;
+    let draw_freq = config.draw_freq;
+    let handle = thread::spawn(move || draw_thread::draw_thread(chip_clone, draw_freq));
 
-    let mut last_cpu_tick = Instant::now();
-    let mut last_timers_tick = last_cpu_tick;
-
-    loop {
-        let cpu_elapsed = last_cpu_tick.elapsed();
-        if cpu_elapsed > cpu_tick {
-            match chip.cpu_tick() {
-                Ok(_) => {}
-                Err(e) => {
-                    eprintln!("{}", e);
-                    return;
-                }
-            }
-            termui.draw(&mut chip, format!("{: >5} ms/c or {: >6} cps", cpu_elapsed.as_millis(), 1_000_000_000/cpu_elapsed.as_nanos()).as_str());
-            last_cpu_tick = Instant::now()
-        }
-        if last_timers_tick.elapsed() > timers_tick {
-            chip.timers_tick();
-            if chip.is_sound_playing() {
-                config.sink.play()
-            } else {
-                config.sink.pause()
-            }
-            last_timers_tick = Instant::now()
-        }
-    }
+    handle.join().unwrap();
 }
 
 fn main() {

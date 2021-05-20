@@ -1,5 +1,5 @@
 use std::hint::unreachable_unchecked;
-
+use chiprust_emu::{Chip8State, display::get_px, get_opcode};
 use crossterm::{
     cursor::MoveTo,
     queue,
@@ -44,17 +44,17 @@ const REGISTER_DEBUG_STYLE: ContentStyle = ContentStyle {
     attributes: unsafe { std::mem::transmute(0) },
 };
 
-pub fn get_screen(chip: &mut super::Chip8) -> Vec<String> {
+pub fn get_screen(display: &[u128; 64]) -> Vec<String> {
     let mut result = Vec::with_capacity(32);
     for y in 0..32 {
         let mut row = String::new();
         for x in 0..128 {
-            match chip.display.read_px(x, y * 2) {
-                true => match chip.display.read_px(x, y * 2 + 1) {
+            match get_px(display, x, y * 2) {
+                true => match get_px(display, x, y * 2 + 1) {
                     true => row.push('█'),
                     false => row.push('▀'),
                 },
-                false => match chip.display.read_px(x, y * 2 + 1) {
+                false => match get_px(display, x, y * 2 + 1) {
                     true => row.push('▄'),
                     false => row.push(' '),
                 },
@@ -190,8 +190,8 @@ pub fn draw_frame(term_size: (u16, u16), stdout: &mut std::io::Stdout) {
     draw_horizontal_delimiter(stdout, term_size, 0, 33, 130)
 }
 
-pub fn draw_screen(stdout: &mut std::io::Stdout, chip: &mut super::Chip8) {
-    for (i, row) in get_screen(chip).iter().enumerate() {
+pub fn draw_screen(stdout: &mut std::io::Stdout, display: &[u128; 64]) {
+    for (i, row) in get_screen(display).iter().enumerate() {
         queue!(
             stdout,
             MoveTo(1, i as u16 + 1),
@@ -201,10 +201,10 @@ pub fn draw_screen(stdout: &mut std::io::Stdout, chip: &mut super::Chip8) {
     }
 }
 
-pub fn draw_memory(term_size: (u16, u16), stdout: &mut std::io::Stdout, chip: &mut super::Chip8) {
+pub fn draw_memory(term_size: (u16, u16), stdout: &mut std::io::Stdout, chip: &Chip8State) {
     let number_of_entries = term_size.1 - 2;
     let current_pos = number_of_entries / 2;
-    let starting_with = chip.get_pc() + current_pos as usize - number_of_entries as usize;
+    let starting_with = chip.pc + current_pos as usize - number_of_entries as usize;
     for i in 1..=number_of_entries as usize {
         queue!(stdout, MoveTo(130, i as u16)).expect("Error working with terminal");
         if i == current_pos as usize {
@@ -213,8 +213,8 @@ pub fn draw_memory(term_size: (u16, u16), stdout: &mut std::io::Stdout, chip: &m
                 Print(MEMORY_CURRENT_STYLE.apply(format!(
                     " ${:04x?}: {:04x?}; {}",
                     starting_with + i,
-                    chip.get_opcode(starting_with + i),
-                    get_visual_double_byte(chip.get_opcode(starting_with + i))
+                    get_opcode(&chip.mem, starting_with + i),
+                    get_visual_double_byte(get_opcode(&chip.mem, starting_with + i))
                 )))
             )
         } else {
@@ -223,8 +223,8 @@ pub fn draw_memory(term_size: (u16, u16), stdout: &mut std::io::Stdout, chip: &m
                 Print(MEMORY_DEBUG_STYLE.apply(format!(
                     " {:04x?}: {:04x?};  {}",
                     starting_with + i,
-                    chip.get_opcode(starting_with + i),
-                    get_visual_double_byte(chip.get_opcode(starting_with + i))
+                    get_opcode(&chip.mem, starting_with + i),
+                    get_visual_double_byte(get_opcode(&chip.mem, starting_with + i))
                 )))
             )
         }
@@ -232,15 +232,14 @@ pub fn draw_memory(term_size: (u16, u16), stdout: &mut std::io::Stdout, chip: &m
     }
 }
 
-pub fn draw_regs(term_size: (u16, u16), stdout: &mut std::io::Stdout, chip: &mut super::Chip8) {
+pub fn draw_regs(term_size: (u16, u16), stdout: &mut std::io::Stdout, chip: &Chip8State) {
     let available_lines = term_size.1 - 34;
     let spacing = (available_lines - 2) / 3;
     let middle_space = (available_lines - 2) - spacing * 2;
-    let regs = chip.get_regs();
     let mut p = 0;
     p += spacing;
     queue!(stdout, MoveTo(1, 34 + p)).expect("Error working with terminal");
-    for (i, reg) in regs.iter().enumerate().take(9) {
+    for (i, reg) in chip.regs.iter().enumerate().take(9) {
         queue!(
             stdout,
             Print(REGISTER_DEBUG_STYLE.apply(format!("  V{:x?}= {:02x?}", i, reg)))
@@ -249,7 +248,7 @@ pub fn draw_regs(term_size: (u16, u16), stdout: &mut std::io::Stdout, chip: &mut
     }
     p += middle_space;
     queue!(stdout, MoveTo(1, 34 + p)).expect("Error working with terminal");
-    for (i, reg) in regs.iter().enumerate().skip(9) {
+    for (i, reg) in chip.regs.iter().enumerate().skip(9) {
         queue!(
             stdout,
             Print(REGISTER_DEBUG_STYLE.apply(format!("  V{:x?}= {:02x?}", i, reg)))
@@ -258,9 +257,9 @@ pub fn draw_regs(term_size: (u16, u16), stdout: &mut std::io::Stdout, chip: &mut
     }
     queue!(
         stdout,
-        Print(REGISTER_DEBUG_STYLE.apply(format!("  DT= {:02x?}", chip.get_delay_timer()))),
-        Print(REGISTER_DEBUG_STYLE.apply(format!("  ST= {:02x?}", chip.get_sound_timer()))),
-        Print(REGISTER_DEBUG_STYLE.apply(format!("  I= {:04x?}", chip.get_i())))
+        Print(REGISTER_DEBUG_STYLE.apply(format!("  DT= {:02x?}", chip.delay_timer))),
+        Print(REGISTER_DEBUG_STYLE.apply(format!("  ST= {:02x?}", chip.sound_timer))),
+        Print(REGISTER_DEBUG_STYLE.apply(format!("  I= {:04x?}", chip.i)))
     )
     .expect("Error working with terminal");
 }
