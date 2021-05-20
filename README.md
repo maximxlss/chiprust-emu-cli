@@ -29,3 +29,6 @@ See also `chiprust-emu-cli --help`
 - Switch to more low-level audio lib to reduce dependency count
 - Write docs for the backend
 - Make keybinds customizable
+
+### I wonder if I will ever return to this...
+Feel free to add issues and pull requests on github
