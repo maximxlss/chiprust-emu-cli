@@ -12,6 +12,12 @@ use std::io::{stdout, Write};
 
 const MINIMUM_SIZE: (u16, u16) = (143, 36);
 
+pub fn exit(error_message: &str) {
+    execute!(stdout(), LeaveAlternateScreen).expect("Error working with terminal");
+    println!("{}", error_message);
+    std::process::exit(0)
+}
+
 pub struct TermUI {
     term_size: (u16, u16),
     min_fits: bool,
@@ -29,8 +35,7 @@ impl TermUI {
         .expect("Error working with terminal");
 
         set_ctrlc_handler(|| {
-            execute!(stdout(), LeaveAlternateScreen).expect("Error working with terminal");
-            std::process::exit(0)
+            exit("")
         })
         .expect("Error setting up ctrl-c handler");
 
