@@ -13,7 +13,7 @@ See also `chiprust-emu-cli --help`
 ## Requirements
 - Base emulator needs an ANSI terminal bigger than 132x36 and std lib.
 - Sound feature carries many dependencies and doesn't work on somewhat exotic platforms (Android). You can disable it with the method above.
-- Input works only with X11 on linux.
+- Input works only with X11 on linux or on windows.
 
 ## Working
 - Basic emulation.
